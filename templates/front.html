@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div>
+        <div>
+            <h2>Udacity Multi Blog</h2>
+
+        </div>
+    </div>
+
+    {% for p in posts %}
+
+        <div>
+            {{ p.render() | safe }}
+        </div>
+
+    {% endfor %}
+
+{% endblock %}
