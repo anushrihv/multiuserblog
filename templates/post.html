@@ -12,4 +12,9 @@
   <div class="post-content">
     {{p._render_text | safe}}
   </div>
+  <br>
+  <a class="login-link" href="/blog/editpost/{{p.key().id()}}#">edit </a>
+  <a class="login-link" href="/blog/deletepost/{{p.key().id()}}#">delete</a>
+  <br><br><br>
 </div>
+<a class="login-link" href="/">All-posts</a>
