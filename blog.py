@@ -106,9 +106,6 @@ class PostPage(BlogHandler):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
 
-        comments = db.GqlQuery("select * from Comment where post_id = " +
-                               post_id + " order by created desc")
-
         likes = db.GqlQuery("select * from Like where post_id="+post_id)
 
         if not post:
@@ -118,7 +115,6 @@ class PostPage(BlogHandler):
         error = self.request.get('error')
 
         self.render("permalink.html", post = post,noOfLikes=likes,
-                    comments=comments,
                     error=error)
 
     def post(self, post_id):
@@ -129,11 +125,6 @@ class PostPage(BlogHandler):
             self.error(404)
             return
 
-        """
-            On posting comment, new comment tuple is created and stored,
-            with relationship data of user and post.
-        """
-        c = ""
         if(self.user):
             # On clicking like, post-like value increases.
             if(self.request.get('like') and
@@ -152,26 +143,9 @@ class PostPage(BlogHandler):
                             post_id=int(post_id))
                     l.put()
 
-            # On commenting, it creates new comment tuple
-            if(self.request.get('comment')):
-                c = Comment(parent=blog_key(), user_id=self.user.key().id(),
-                            post_id=int(post_id),
-                            comment=self.request.get('comment'))
-                c.put()
-        else:
-            self.redirect("/login?error=You need to login before " +
-                            "performing edit, like or commenting.!!")
-            return
-
-        comments = db.GqlQuery("select * from Comment where post_id = " +
-                                post_id + "order by created desc")
-
-        likes = db.GqlQuery("select * from Like where post_id="+post_id)
 
         self.render("permalink.html", post=post,
-                    comments=comments,
-                    noOfLikes=likes.count(),
-                    new=c)
+                    noOfLikes=likes.count())
 
 
 class NewPost(BlogHandler):
