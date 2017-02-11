@@ -4,35 +4,36 @@ import random
 import hashlib
 import hmac
 from string import letters
-
 import webapp2
 import jinja2
-
 from user import User
 from post import Post
 from like import Like
-
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
-                               autoescape = True)
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                               autoescape=True)
 
 secret = 'secret'
+
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
 
+
 def make_secure_val(val):
     """ creates secure value using secret """
     return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
+
 
 def check_secure_val(secure_val):
     """ to verify secure calue against secret """
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
+
 
 class BlogHandler(webapp2.RequestHandler):
     """ A blog handler class. inherits webapp2.RequestHandler.
@@ -79,24 +80,29 @@ class BlogHandler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
+
 def render_post(response, post):
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
 
+
 class MainPage(BlogHandler):
-  def get(self):
-      self.write('Hello, Udacity!')
+    def get(self):
+        self.write('Hello, Udacity!')
 
-##### blog stuff
+# blog stuff
 
-def blog_key(name = 'default'):
+
+def blog_key(name='default'):
     return db.Key.from_path('blogs', name)
+
 
 class BlogFront(BlogHandler):
     def get(self):
         """ renders home page with all posts,sorted by date. """
         posts = Post.all().order('-created')
-        self.render('front.html', posts = posts)
+        self.render('front.html', posts=posts)
+
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -114,7 +120,7 @@ class PostPage(BlogHandler):
 
         error = self.request.get('error')
 
-        self.render("permalink.html", post = post,noOfLikes=likes,
+        self.render("permalink.html", post=post, noOfLikes=likes,
                     error=error)
 
     def post(self, post_id):
@@ -128,21 +134,20 @@ class PostPage(BlogHandler):
         if(self.user):
             # On clicking like, post-like value increases.
             if(self.request.get('like') and
-                self.request.get('like') == "update"):
+               self.request.get('like') == "update"):
                 likes = db.GqlQuery("select * from Like where post_id = " +
                                     post_id + " and user_id = " +
                                     str(self.user.key().id()))
 
                 if self.user.key().id() == post.user_id:
                     self.redirect("/blog/" + post_id +
-                                    "?error=You cannot like your " +
-                                    "post.!!")
+                                  "?error=You cannot like your " +
+                                  "post.!!")
                     return
                 elif likes.count() == 0:
                     l = Like(parent=blog_key(), user_id=self.user.key().id(),
-                            post_id=int(post_id))
+                             post_id=int(post_id))
                     l.put()
-
 
         self.render("permalink.html", post=post,
                     noOfLikes=likes.count())
@@ -160,15 +165,15 @@ class NewPost(BlogHandler):
             creates new post and redirect to new post page
         """
         if not self.user:
-            self.redirect('/login')
+            return self.redirect('/login')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
 
         if subject and content:
-            p = Post(parent = blog_key(),user_id=self.user.key().id(),
-                     subject = subject,
-                     content = content)
+            p = Post(parent=blog_key(), user_id=self.user.key().id(),
+                     subject=subject,
+                     content=content)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
@@ -186,19 +191,32 @@ class EditPost(BlogHandler):
                 self.render("editpost.html", subject=post.subject,
                             content=post.content)
             else:
-                self.redirect("/blog/" + post_id + "?error=You don't have " +
-                              "access to edit this record.")
+                return self.redirect("/blog/" + post_id + "?error=You don't " +
+                                     "have access to edit this record.")
         else:
-            self.redirect("/login?error=You need to be logged, " +
-                          "in order to edit your post!!")
+            return self.redirect("/login?error=You need to be logged, " +
+                                 "in order to edit your post!!")
 
     def post(self, post_id):
         """
             Updates post.
         """
-        if not self.user:
-            self.redirect("/login?error=You need to be logged, " +
-                          "in order to edit your post!!")
+        # if not self.user:
+        #     self.redirect("/login?error=You need to be logged, " +
+        #                   "in order to edit your post!!")
+
+        if self.user:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            if post.user_id == self.user.key().id():
+                self.render("editpost.html", subject=post.subject,
+                            content=post.content)
+            else:
+                return self.redirect("/blog/" + post_id + "?error=You don't" +
+                                     "have access to edit this record.")
+        else:
+            return self.redirect("/login?error=You need to be logged, " +
+                                 "in order to edit your post!!")
 
         subject = self.request.get('subject')
         content = self.request.get('content')
@@ -214,6 +232,7 @@ class EditPost(BlogHandler):
             error = "subject and content, please!"
             self.render("editpost.html", subject=subject,
                         content=content, error=error)
+
 
 class DeletePost(BlogHandler):
     def get(self, post_id):
@@ -233,18 +252,22 @@ class DeletePost(BlogHandler):
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 
+
 def valid_username(username):
     return username and USER_RE.match(username)
 
 PASS_RE = re.compile(r"^.{3,20}$")
 
+
 def valid_password(password):
     return password and PASS_RE.match(password)
 
-EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+
 
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
+
 
 class Signup(BlogHandler):
     def get(self):
@@ -286,19 +309,21 @@ class Signup(BlogHandler):
     def done(self, *a, **kw):
         raise NotImplementedError
 
+
 class Register(Signup):
     def done(self):
         # make sure the user doesn't already exist
         u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
-            self.render('signup-form.html', error_username = msg)
+            self.render('signup-form.html', error_username=msg)
         else:
             u = User.register(self.username, self.password, self.email)
             u.put()
 
             self.login(u)
             self.redirect('/')
+
 
 class Login(BlogHandler):
     def get(self):
@@ -314,14 +339,13 @@ class Login(BlogHandler):
             self.redirect('/')
         else:
             msg = 'Invalid login'
-            self.render('login-form.html', error = msg)
+            self.render('login-form.html', error=msg)
+
 
 class Logout(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/')
-
-
 
 app = webapp2.WSGIApplication([('/?', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
