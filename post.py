@@ -12,7 +12,7 @@ def jinja_render_str(template, **params):
     return t.render(params)
 
 class Post(db.Model):
-    user_id = db.IntegerProperty(required=True)
+    user_id = db.IntegerProperty(required = True)
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
